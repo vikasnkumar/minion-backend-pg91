@@ -5,8 +5,9 @@ use Mojo::IOLoop;
 use Mojo::JSON qw(encode_json decode_json);
 use Mojo::Pg;
 use Sys::Hostname 'hostname';
+use Carp 'croak';
 
-our $VERSION = '4.0401'; ## copied from Minion::Backend::Pg of version 4.04
+our $VERSION = '4.0402'; ## copied from Minion::Backend::Pg of version 4.04
 
 has 'pg';
 
@@ -80,7 +81,9 @@ sub list_workers {
 }
 
 sub new {
-  my $self = shift->SUPER::new(pg => Mojo::Pg->new(@_));
+  my $self = shift->_is_pg91(@_);
+  croak 'PostgreSQL is not 9.1' unless $self;
+  $self = $self->SUPER::new(pg => Mojo::Pg->new(@_));
   my $pg = $self->pg->auto_migrate(1)->max_connections(1);
   $pg->migrations->name('minion')->from_data;
   return $self;
@@ -225,6 +228,13 @@ sub _update {
   return 1 if $retries >= ($attempts - 1);
   my $delay = $self->minion->backoff->($retries);
   return $self->retry_job($id, $retries, {delay => $delay});
+}
+
+sub _is_pg91 {
+    my $self = shift;
+    my $pg = Mojo::Pg->new(@_);
+    my $ver = $pg->db->query('SHOW server_version')->hash->{'server_version'};
+    return ($ver and $ver =~ /9\.1/i) ? $self : undef;
 }
 
 1;

@@ -16,7 +16,13 @@ require Mojo::Pg;
 my $pg = Mojo::Pg->new($ENV{TEST_ONLINE});
 $pg->db->query('drop schema if exists minion_test cascade');
 $pg->db->query('create schema minion_test');
+my $sver = $pg->db->query('show server_version')->hash->{'server_version'};
+like $sver, qr/9\.1/, "server version is $sver";
 my $minion = Minion->new(Pg91 => $ENV{TEST_ONLINE});
+isnt $minion, undef, 'minion is defined';
+
+isnt $minion->backend, undef, 'minion backend is defined';
+isa_ok $minion->backend, 'Minion::Backend::Pg91';
 $minion->backend->pg->search_path(['minion_test']);
 
 # Nothing to repair

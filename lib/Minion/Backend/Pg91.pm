@@ -6,7 +6,7 @@ use Mojo::JSON qw(encode_json decode_json);
 use Mojo::Pg;
 use Sys::Hostname 'hostname';
 
-our $VERSION = '4.04'; ## copied from Minion::Backend::Pg of that version
+our $VERSION = '4.0401'; ## copied from Minion::Backend::Pg of version 4.04
 
 has 'pg';
 

@@ -1,2 +1,3 @@
+4254ef3731621de2d46e9af75926db1831833f43 Fixing the CPAN distribution and upgrading to 4.0401
 08c5aeb4ae3749c651a00eff05ea2c7588f6b851 Updating pod and readme to use Pg91
 c353d601b809d3bea36a510e978c8b4f9b56c8be Creating Minion::Backend::Pg91 to support Postgres 9.1

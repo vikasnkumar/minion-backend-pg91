@@ -27,8 +27,8 @@ WriteMakefile(
         resources => {
             repository => {
                 type => 'git',
-                url => 'git://github.com/vikasnkumar/minion-backend-pg91.git',
-                web => 'https://github.com/vikasnkumar/minion-backend-pg91',
+                #url => 'git://github.com/vikasnkumar/minion-backend-pg91.git',
+                url => 'https://github.com/vikasnkumar/minion-backend-pg91',
             }
         },
     },

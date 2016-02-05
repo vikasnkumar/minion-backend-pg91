@@ -7,7 +7,7 @@ use Mojo::Pg;
 use Sys::Hostname 'hostname';
 use Carp 'croak';
 
-our $VERSION = '4.0402'; ## copied from Minion::Backend::Pg of version 4.04
+our $VERSION = '4.0403'; ## copied from Minion::Backend::Pg of version 4.04
 
 has 'pg';
 

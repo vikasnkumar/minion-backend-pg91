@@ -7,7 +7,7 @@ use Mojo::Pg;
 use Sys::Hostname 'hostname';
 use Carp 'croak';
 
-our $VERSION = '4.0403'; ## copied from Minion::Backend::Pg of version 4.04
+our $VERSION = '4.06'; ## copied from Minion::Backend::Pg of version 4.06
 
 has 'pg';
 
@@ -81,9 +81,9 @@ sub list_workers {
 }
 
 sub new {
-  my $self = shift->_is_pg91(@_);
-  croak 'PostgreSQL is not 9.1' unless $self;
-  $self = $self->SUPER::new(pg => Mojo::Pg->new(@_));
+  my $self = shift->SUPER::new(pg => Mojo::Pg->new(@_));
+  croak 'PostgreSQL 9.1 is required'
+    unless Mojo::Pg->new(@_)->db->dbh->{pg_server_version} < 90200;
   my $pg = $self->pg->auto_migrate(1)->max_connections(1);
   $pg->migrations->name('minion')->from_data;
   return $self;
@@ -228,13 +228,6 @@ sub _update {
   return 1 if $retries >= ($attempts - 1);
   my $delay = $self->minion->backoff->($retries);
   return $self->retry_job($id, $retries, {delay => $delay});
-}
-
-sub _is_pg91 {
-    my $self = shift;
-    my $pg = Mojo::Pg->new(@_);
-    my $ver = $pg->db->query('SHOW server_version')->hash->{'server_version'};
-    return ($ver and $ver =~ /9\.1/i) ? $self : undef;
 }
 
 1;
@@ -734,14 +727,19 @@ alter table minion_workers add column
   notified timestamp with time zone not null default now();
 alter table minion_workers alter column started set default now();
 
--- 3 up
-create index on minion_jobs (state);
-
 -- 4 up
 alter table minion_jobs add column queue text not null default 'default';
 
 -- 5 up
 alter table minion_jobs add column attempts int not null default 1;
 
--- 6 up
-drop index minion_jobs_state_idx;
+-- 7 up
+create type minion_state as enum ('inactive', 'active', 'failed', 'finished');
+alter table minion_jobs alter column state set default 'inactive'::minion_state;
+alter table minion_jobs
+  alter column state type minion_state using state::minion_state;
+
+-- 7 down
+alter table minion_jobs alter column state type text using state;
+alter table minion_jobs alter column state set default 'inactive';
+drop type if exists minion_state;

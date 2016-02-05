@@ -13,7 +13,7 @@ WriteMakefile(
         'ExtUtils::MakeMaker' => 0,
     },
     PREREQ_PM => {
-        Minion => '4.04',
+        Minion => '4.06',
         'Mojo::Pg' => '2.18',
         Mojolicious => 0,
     },

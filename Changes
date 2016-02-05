@@ -1,3 +1,5 @@
+- 4.06
+    - Updating with changes as in Minion::Backend::Pg version 4.06
 - 4.0403
     - Adding LICENSE file for Github
     - Meta-merge field updated for Metacpan.org

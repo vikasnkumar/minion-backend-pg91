@@ -233,24 +233,23 @@ sub _update {
 
 =head1 NAME
 
-Minion::Backend::Pg - PostgreSQL backend
+Minion::Backend::Pg91 - PostgreSQL 9.1 backend
 
 =head1 SYNOPSIS
 
-  use Minion::Backend::Pg;
+  use Minion::Backend::Pg91;
 
-  my $backend = Minion::Backend::Pg->new('postgresql://postgres@/test');
+  my $backend = Minion::Backend::Pg91->new('postgresql://postgres@/test');
 
 =head1 DESCRIPTION
 
-L<Minion::Backend::Pg> is a backend for L<Minion> based on L<Mojo::Pg>. All
+L<Minion::Backend::Pg91> is a backend for L<Minion> based on L<Minion::Backend::Pg> . All
 necessary tables will be created automatically with a set of migrations named
-C<minion>. Note that this backend uses many bleeding edge features, so only the
-latest, stable version of PostgreSQL is fully supported.
+C<minion>. Note that this backend only supports PostgreSQL 9.1.
 
 =head1 ATTRIBUTES
 
-L<Minion::Backend::Pg> inherits all attributes from L<Minion::Backend> and
+L<Minion::Backend::Pg91> inherits all attributes from L<Minion::Backend> and
 implements the following new ones.
 
 =head2 pg
@@ -262,7 +261,7 @@ L<Mojo::Pg> object used to store all data.
 
 =head1 METHODS
 
-L<Minion::Backend::Pg> inherits all methods from L<Minion::Backend> and
+L<Minion::Backend::Pg91> inherits all methods from L<Minion::Backend> and
 implements the following new ones.
 
 =head2 dequeue
@@ -508,9 +507,9 @@ Returns the same information as L</"worker_info"> but in batches.
 
 =head2 new
 
-  my $backend = Minion::Backend::Pg->new('postgresql://postgres@/test');
+  my $backend = Minion::Backend::Pg91->new('postgresql://postgres@/test');
 
-Construct a new L<Minion::Backend::Pg> object.
+Construct a new L<Minion::Backend::Pg91> object.
 
 =head2 register_worker
 

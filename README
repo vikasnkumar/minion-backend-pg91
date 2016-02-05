@@ -348,5 +348,6 @@ METHODS
       Time worker was started.
 
 SEE ALSO
-    Minion, Mojolicious::Guides, http://mojolicious.org.
+    Minion, Minion::Backend::Pg, Mojolicious::Guides,
+    http://mojolicious.org.
 

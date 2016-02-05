@@ -23,8 +23,13 @@ WriteMakefile(
         'Time::HiRes' => 0,
     },
     META_MERGE => {
+        'meta-spec' => { version => 2 },
         resources => {
-            repository => 'https://github.com/vikasnkumar/minion-backend-pg91',
+            repository => {
+                type => 'git',
+                url => 'git://github.com/vikasnkumar/minion-backend-pg91.git',
+                web => 'https://github.com/vikasnkumar/minion-backend-pg91',
+            }
         },
     },
     LICENSE => 'perl',

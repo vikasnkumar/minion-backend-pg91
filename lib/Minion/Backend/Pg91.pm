@@ -679,7 +679,7 @@ Time worker was started.
 
 =head1 SEE ALSO
 
-L<Minion>, L<Mojolicious::Guides>, L<http://mojolicious.org>.
+L<Minion>, L<Minion::Backend::Pg>, L<Mojolicious::Guides>, L<http://mojolicious.org>.
 
 =cut
 

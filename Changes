@@ -1,3 +1,5 @@
+- 5.00
+    - Updating with minor changes to match Minion::Backend::Pg version 5.0
 - 4.06
     - Updating with changes as in Minion::Backend::Pg version 4.06
 - 4.0403

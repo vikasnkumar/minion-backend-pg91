@@ -7,7 +7,7 @@ use Mojo::Pg;
 use Sys::Hostname 'hostname';
 use Carp 'croak';
 
-our $VERSION = '4.06'; ## copied from Minion::Backend::Pg of version 4.06
+our $VERSION = '5.00'; ## copied from Minion::Backend::Pg of version 5.00
 
 has 'pg';
 
@@ -28,9 +28,7 @@ sub dequeue {
 }
 
 sub enqueue {
-  my ($self, $task) = (shift, shift);
-  my $args    = shift // [];
-  my $options = shift // {};
+  my ($self, $task, $args, $options) = (shift, shift, shift || [], shift || {});
 
   my $db = $self->pg->db;
   return $db->query(
@@ -55,7 +53,7 @@ sub job_info {
      from minion_jobs where id = ?', shift
   )->hash;
   return undef unless $h;
-  $h->{args} = $h->{args} ? decode_json($h->{args}) : undef;
+  $h->{args} = $h->{args} ? decode_json($h->{args}) : [];
   $h->{result} = $h->{result} ? decode_json($h->{result}) : undef;
   return $h;
 }
@@ -67,8 +65,7 @@ sub list_jobs {
     'select id from minion_jobs
      where (state = $1 or $1 is null) and (task = $2 or $2 is null)
      order by id desc
-     limit $3
-     offset $4', @$options{qw(state task)}, $limit, $offset
+     limit $3 offset $4', @$options{qw(state task)}, $limit, $offset
   )->arrays->map(sub { $self->job_info($_->[0]) })->to_array;
 }
 
@@ -82,8 +79,8 @@ sub list_workers {
 
 sub new {
   my $self = shift->SUPER::new(pg => Mojo::Pg->new(@_));
-  croak 'PostgreSQL 9.1 is required'
-    unless Mojo::Pg->new(@_)->db->dbh->{pg_server_version} < 90200;
+  croak 'PostgreSQL 9.1 or later is required'
+    if Mojo::Pg->new(@_)->db->dbh->{pg_server_version} < 90100;
   my $pg = $self->pg->auto_migrate(1)->max_connections(1);
   $pg->migrations->name('minion')->from_data;
   return $self;
@@ -147,7 +144,7 @@ sub retry_job {
        retried = now(), retries = retries + 1, state = 'inactive',
        delayed = (now() + (interval '1 second' * ?))
      where id = ? and retries = ?
-       and state in ('failed', 'finished', 'inactive')
+       and state in ('inactive', 'failed', 'finished')
      returning 1", @$options{qw(priority queue)}, $options->{delay} // 0, $id,
     $retries
   )->rows;
@@ -156,6 +153,22 @@ sub retry_job {
 sub stats {
   my $self = shift;
 
+  my $stats = $self->pg->db->query(
+    "select state::text || '_jobs', count(state) from minion_jobs group by state
+     union all
+     select 'inactive_workers', count(*) from minion_workers
+     union all
+     select 'active_workers', count(distinct worker) from minion_jobs
+     where state = 'active'"
+  )->arrays->reduce(sub { $a->{$b->[0]} = $b->[1]; $a }, {});
+  $stats->{inactive_workers} -= $stats->{active_workers};
+  $stats->{"${_}_jobs"} ||= 0 for qw(inactive active failed finished);
+
+  return $stats;
+}
+
+sub _old_stats {
+  my $self = shift;
   my $db  = $self->pg->db;
   my $all = $db->query('select count(*) from minion_workers')->array->[0];
   my $sql
@@ -209,7 +222,7 @@ sub _try {
     $options->{queues} || ['default'], [keys %{$self->minion->tasks}]
   )->hash;
   return undef unless $h;
-  $h->{args} = $h->{args} ? decode_json($h->{args}) : undef;
+  $h->{args} = $h->{args} ? decode_json($h->{args}) : [];
   return $h;
 }
 
@@ -743,3 +756,6 @@ alter table minion_jobs
 alter table minion_jobs alter column state type text using state;
 alter table minion_jobs alter column state set default 'inactive';
 drop type if exists minion_state;
+
+-- 8 up
+create index on minion_jobs (state, priority desc, created);

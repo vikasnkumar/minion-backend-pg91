@@ -17,7 +17,7 @@ my $pg = Mojo::Pg->new($ENV{TEST_ONLINE});
 $pg->db->query('drop schema if exists minion_test cascade');
 $pg->db->query('create schema minion_test');
 my $sver = $pg->db->query('show server_version')->hash->{'server_version'};
-like $sver, qr/9\.1/, "server version is $sver";
+like $sver, qr/9\.[1-4]/, "server version is $sver";
 my $minion = Minion->new(Pg91 => $ENV{TEST_ONLINE});
 isnt $minion, undef, 'minion is defined';
 
@@ -30,10 +30,10 @@ my $worker = $minion->repair->worker;
 isa_ok $worker->minion->app, 'Mojolicious', 'has default application';
 
 # Migrate up and down
-is $minion->backend->pg->migrations->active, 8, 'active version is 8';
+is $minion->backend->pg->migrations->active, 13, 'active version is 13';
 is $minion->backend->pg->migrations->migrate(0)->active, 0,
   'active version is 0';
-is $minion->backend->pg->migrations->migrate->active, 8, 'active version is 8';
+is $minion->backend->pg->migrations->migrate->active, 13, 'active version is 13';
 
 # Register and unregister
 $worker->register;
@@ -573,6 +573,19 @@ is $minion->job($id3)->info->{result}, undef,      'no result';
 is $minion->job($id4)->info->{state},  'failed',   'right state';
 is $minion->job($id4)->info->{result}, 'Non-zero exit status (1)',
   'right result';
+$worker->unregister;
+
+# Stopping jobs
+$minion->add_task(long_running => sub { sleep 1000 });
+$worker = $minion->worker->register;
+$minion->enqueue('long_running');
+$job = $worker->dequeue(0);
+ok $job->start->pid, 'has a process id';
+ok !$job->is_finished, 'job is not finished';
+$job->stop;
+usleep 5000 until $job->is_finished;
+is $job->info->{state}, 'failed', 'right state';
+like $job->info->{result}, qr/Non-zero exit status/, 'right result';
 $worker->unregister;
 
 # Clean up once we are done

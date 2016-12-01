@@ -7,9 +7,28 @@ use Mojo::Pg;
 use Sys::Hostname 'hostname';
 use Carp 'croak';
 
-our $VERSION = '5.00'; ## copied from Minion::Backend::Pg of version 5.00
+our $VERSION = '6.00'; ## copied from Minion::Backend::Pg of version 5.00
 
 has 'pg';
+
+sub broadcast {
+    my ($self, $command, $args, $ids) = (shift, shift, shift || [], shift || []);
+    my $json = encode_json [$command, @$args];
+    return !!$self->pg->db->query(
+        q{update minion_workers set inbox = inbox || $1
+        where (id = any($2) or $2 = '{}')}, $json, $ids
+    )->rows;
+}
+
+sub receive {
+  my $array = shift->pg->db->query(
+    "update minion_workers as new set inbox = '[]'
+     from (select id, inbox from minion_workers where id = ? for update) as old
+     where new.id = old.id and old.inbox != '[]'
+     returning old.inbox", shift
+  )->expand->array;
+  return $array ? $array->[0] : [];
+}
 
 sub dequeue {
   my ($self, $id, $wait, $options) = @_;
@@ -759,3 +778,36 @@ drop type if exists minion_state;
 
 -- 8 up
 create index on minion_jobs (state, priority desc, created);
+
+-- 9 up
+create or replace function minion_jobs_notify_workers() returns trigger as $$
+  begin
+    if new.delayed <= now() then
+      notify "minion.job";
+    end if;
+    return null;
+  end;
+$$ language plpgsql;
+set client_min_messages to warning;
+drop trigger if exists minion_jobs_insert_trigger on minion_jobs;
+drop trigger if exists minion_jobs_notify_workers_trigger on minion_jobs;
+set client_min_messages to notice;
+create trigger minion_jobs_notify_workers_trigger
+  after insert or update of retries on minion_jobs
+  for each row execute procedure minion_jobs_notify_workers();
+
+-- 9 down
+drop trigger if exists minion_jobs_notify_workers_trigger on minion_jobs;
+drop function if exists minion_jobs_notify_workers();
+
+-- 10 up
+alter table minion_jobs add column parents bigint[] default '{}';
+
+-- 11 up
+create index on minion_jobs (state, priority desc, id);
+
+-- 12 up
+alter table minion_workers add column inbox TEXT default '[]';
+
+-- 13 up
+create index on minion_jobs using gin (parents);

@@ -21,6 +21,8 @@ like $sver, qr/9\.[1-4]/, "server version is $sver";
 my $minion = Minion->new(Pg91 => $ENV{TEST_ONLINE});
 isnt $minion, undef, 'minion is defined';
 
+ok $Minion::VERSION >= 8, "Minion version is version 8.0 or higher";
+
 isnt $minion->backend, undef, 'minion backend is defined';
 isa_ok $minion->backend, 'Minion::Backend::Pg91';
 $minion->backend->pg->search_path(['minion_test']);
@@ -115,6 +117,12 @@ ok !$minion->job($id3), 'job has been cleaned up';
 $worker  = $minion->worker->register;
 $worker2 = $minion->worker->register;
 my $batch = $minion->backend->list_workers(0, 10);
+
+ok ref($batch) =~ m/HASH/,  'list_workers returns hashref for version 8.0+ of Minon';
+ok exists($batch->{workers}), 'list_jobs has "jobs" hash key  for new version 8.0+ of Minon';
+
+$batch = $batch->{workers};
+
 ok $batch->[0]{id},        'has id';
 is $batch->[0]{host},      $host, 'right host';
 is $batch->[0]{pid},       $$, 'right pid';
@@ -122,10 +130,10 @@ like $batch->[0]{started}, qr/^[\d.]+$/, 'has timestamp';
 is $batch->[1]{host},      $host, 'right host';
 is $batch->[1]{pid},       $$, 'right pid';
 ok !$batch->[2], 'no more results';
-$batch = $minion->backend->list_workers(0, 1);
+$batch = $minion->backend->list_workers(0, 1)->{workers};
 is $batch->[0]{id}, $worker2->id, 'right id';
 ok !$batch->[1], 'no more results';
-$batch = $minion->backend->list_workers(1, 1);
+$batch = $minion->backend->list_workers(1, 1)->{workers};
 is $batch->[0]{id}, $worker->id, 'right id';
 ok !$batch->[1], 'no more results';
 $worker->unregister;
@@ -190,6 +198,11 @@ is $stats->{inactive_jobs},    0, 'no inactive jobs';
 # List jobs
 $id = $minion->enqueue('add');
 $batch = $minion->backend->list_jobs(0, 10);
+
+ok ref($batch) =~ m/HASH/, 'list_jobs returns hashref for version 8.0+ of Minon';
+ok exists($batch->{jobs}), 'list_jobs has "jobs" hash key  for new version 8.0+ of Minon';
+
+$batch = $batch->{jobs};
 ok $batch->[0]{id},        'has id';
 is $batch->[0]{task},      'add', 'right task';
 is $batch->[0]{state},     'inactive', 'right state';
@@ -213,19 +226,19 @@ is $batch->[3]{task},       'fail',       'right task';
 is $batch->[3]{state},      'finished',   'right state';
 is $batch->[3]{retries},    0,            'job has not been retried';
 ok !$batch->[4], 'no more results';
-$batch = $minion->backend->list_jobs(0, 10, {state => 'inactive'});
+$batch = $minion->backend->list_jobs(0, 10, {state => 'inactive'})->{jobs};
 is $batch->[0]{state},   'inactive', 'right state';
 is $batch->[0]{retries}, 0,          'job has not been retried';
 ok !$batch->[1], 'no more results';
-$batch = $minion->backend->list_jobs(0, 10, {task => 'add'});
+$batch = $minion->backend->list_jobs(0, 10, {task => 'add'})->{jobs};
 is $batch->[0]{task},    'add', 'right task';
 is $batch->[0]{retries}, 0,     'job has not been retried';
 ok !$batch->[1], 'no more results';
-$batch = $minion->backend->list_jobs(0, 1);
+$batch = $minion->backend->list_jobs(0, 1)->{jobs};
 is $batch->[0]{state},   'inactive', 'right state';
 is $batch->[0]{retries}, 0,          'job has not been retried';
 ok !$batch->[1], 'no more results';
-$batch = $minion->backend->list_jobs(1, 1);
+$batch = $minion->backend->list_jobs(1, 1)->{jobs};
 is $batch->[0]{state},   'finished', 'right state';
 is $batch->[0]{retries}, 1,          'job has been retried';
 ok !$batch->[1], 'no more results';
@@ -303,6 +316,8 @@ $job = $worker->dequeue(0);
 is $job->id, $id, 'right id';
 ok $job->fail,   'job failed';
 ok $job->remove, 'job has been removed';
+use Data::Dump qw(pp);
+pp($job->info);
 is $job->info,   undef, 'no information';
 $id = $minion->enqueue(add => [5, 5]);
 $job = $minion->job("$id");

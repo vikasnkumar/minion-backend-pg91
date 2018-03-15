@@ -80,20 +80,20 @@ sub job_info {
 sub list_jobs {
   my ($self, $offset, $limit, $options) = @_;
 
-  return $self->pg->db->query(
+  return { jobs => $self->pg->db->query(
     'select id from minion_jobs
-     where (state = $1 or $1 is null) and (task = $2 or $2 is null)
+     where (id = any ($1) or $1 is null) and (state = $2 or $2 is null) and (task = $3 or $3 is null)
      order by id desc
-     limit $3 offset $4', @$options{qw(state task)}, $limit, $offset
-  )->arrays->map(sub { $self->job_info($_->[0]) })->to_array;
+     limit $4 offset $5', @$options{qw(ids state task)}, $limit, $offset
+  )->arrays->map(sub { $self->job_info($_->[0]) })->to_array };
 }
 
 sub list_workers {
-  my ($self, $offset, $limit) = @_;
+  my ($self, $offset, $limit,$options) = @_;
 
-  my $sql = 'select id from minion_workers order by id desc limit ? offset ?';
-  return $self->pg->db->query($sql, $limit, $offset)
-    ->arrays->map(sub { $self->worker_info($_->[0]) })->to_array;
+  my $sql = 'select id from minion_workers where (id = any ($1) or $1 is null) order by id desc limit $2 offset $3';
+  return { workers => $self->pg->db->query($sql, $options->{ids}, $limit, $offset)
+    ->arrays->map(sub { $self->worker_info($_->[0]) })->to_array };
 }
 
 sub new {

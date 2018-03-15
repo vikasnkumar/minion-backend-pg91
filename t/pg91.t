@@ -316,8 +316,6 @@ $job = $worker->dequeue(0);
 is $job->id, $id, 'right id';
 ok $job->fail,   'job failed';
 ok $job->remove, 'job has been removed';
-use Data::Dump qw(pp);
-pp($job->info);
 is $job->info,   undef, 'no information';
 $id = $minion->enqueue(add => [5, 5]);
 $job = $minion->job("$id");
